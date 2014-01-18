@@ -50,5 +50,19 @@
 			<artifactId>pdfbox</artifactId>
 			<version>1.8.3</version>
 		</dependency>
+		<dependency>
+			<groupId>opencv</groupId>
+			<artifactId>opencv</artifactId>
+			<version>248</version>
+		</dependency>
 	</dependencies>
+
+	<repositories>
+		<!--other repositories if any -->
+		<repository>
+			<id>project.local</id>
+			<name>project</name>
+			<url>file:${project.basedir}/repo</url>
+		</repository>
+	</repositories>
 </project>
