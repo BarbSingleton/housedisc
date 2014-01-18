@@ -29,6 +29,12 @@
 						<argument>foo</argument>
 						<argument>bar</argument>
 					</arguments>
+					<systemProperties>
+						<property>
+							<name>java.library.path</name>
+							<value>lib/</value>
+						</property>
+					</systemProperties>
 				</configuration>
 			</plugin>
 		</plugins>
@@ -46,14 +52,19 @@
 			<scope>test</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.pdfbox</groupId>
-			<artifactId>pdfbox</artifactId>
-			<version>1.8.3</version>
+			<groupId>net.java.dev.jai-imageio</groupId>
+			<artifactId>jai-imageio-core-standalone</artifactId>
+			<version>1.2-pre-dr-b04-2013-04-23</version>
 		</dependency>
 		<dependency>
 			<groupId>opencv</groupId>
 			<artifactId>opencv</artifactId>
 			<version>248</version>
+		</dependency>
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>16.0</version>
 		</dependency>
 	</dependencies>
 
@@ -63,6 +74,15 @@
 			<id>project.local</id>
 			<name>project</name>
 			<url>file:${project.basedir}/repo</url>
+		</repository>
+		<repository>
+			<releases />
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
+			<id>mygrid-repository</id>
+			<name>myGrid Repository</name>
+			<url>http://www.mygrid.org.uk/maven/repository</url>
 		</repository>
 	</repositories>
 </project>
