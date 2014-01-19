@@ -1,7 +1,10 @@
 package com.github.pkaeding.housedisc;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.color.ColorSpace;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Line2D;
 import java.awt.geom.Point2D;
 import java.awt.image.AffineTransformOp;
 import java.awt.image.BufferedImage;
@@ -55,17 +58,13 @@ public class App {
 
 	static void processPage(BufferedImage page) throws IOException {
 		String id = UUID.randomUUID().toString();
-		BufferedImage imgGray = toGrayscale(page);
-		ImageIO.write(imgGray, "png", new File("/tmp/" + id + "-gray.png"));
-		BufferedImage img = rotateLeft90degrees(imgGray);
-		ImageIO.write(img, "png", new File("/tmp/" + id + "-rotated.png"));
-		System.out.println(img.getColorModel().getPixelSize() + " bits");
-		System.out.println(img.getColorModel().getColorSpace()
-				.getNumComponents()
-				+ " components");
-		int rows = img.getWidth();
-		int cols = img.getHeight();
-		Mat mat = new Mat(rows, cols, CvType.CV_8UC1);// CV_8UC3);
+		BufferedImage rotated = rotateLeft90degrees(page);
+		ImageIO.write(rotated, "png", new File("/tmp/" + id + "-rotated.png"));
+		BufferedImage img = toGrayscale(rotated);
+		ImageIO.write(img, "png", new File("/tmp/" + id + "-gray.png"));
+		int cols = img.getWidth();
+		int rows = img.getHeight();
+		Mat mat = new Mat(rows, cols, CvType.CV_8UC1);
 		byte[] pixels = ((DataBufferByte) img.getRaster().getDataBuffer())
 				.getData();
 		mat.put(0, 0, pixels);
@@ -74,8 +73,29 @@ public class App {
 		Imgproc.Canny(mat, edges, 50, 200);
 		Highgui.imwrite("/tmp/" + id + "-canny.png", edges);
 		Mat lines = new Mat();
-		Imgproc.HoughLines(edges, lines, 1.0, Math.PI / 180, 10);
+		Imgproc.HoughLinesP(mat, lines, 1.0, Math.PI / 180, 50, 50, 10);
 		System.out.println(lines);
+		
+		Graphics2D graphics = rotated.createGraphics();
+		graphics.setColor(Color.blue);
+		System.out.println("lines: " + lines.dump());
+		System.out.println("found " + lines.rows() + " lines");
+		System.out.println("found " + lines.cols() + " cols");
+		for (int i = 0; i < lines.cols(); i++) 
+		{
+			double[] vec = lines.get(0, i);
+			double y2 = vec[0];
+			double x2 = vec[1];
+			double y1 = vec[2];
+			double x1 = vec[3];
+	          
+//			if (Math.abs(y1 - y2) < 20) {
+				System.out.println(String.format("p1: (%s, %s) p2: (%s, %s)",
+						x1, y1, x2, y2));
+				graphics.draw(new Line2D.Double(x1, y1, x2, y2));
+//			}
+		}
+		ImageIO.write(rotated, "png", new File("/tmp/" + id + "-lines.png"));
 		// Raster data = img.getData();
 		// data.getp
 		// data.getp
@@ -98,9 +118,9 @@ public class App {
 				AffineTransformOp.TYPE_BICUBIC);
 		return op.filter(source,
 				new BufferedImage(source.getHeight(), source.getWidth(),
-						BufferedImage.TYPE_BYTE_GRAY));
+						BufferedImage.TYPE_BYTE_INDEXED));
 	}
-	
+
 	static Comparator<Mat> houghLineComparator = new Comparator<Mat>() {
 		public int compare(Mat o1, Mat o2) {
 			// TODO Auto-generated method stub
