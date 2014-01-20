@@ -2,6 +2,7 @@ package com.github.pkaeding.housedisc;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.color.ColorSpace;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Line2D;
@@ -106,6 +107,66 @@ public class App {
 		return -1;
 	}
 	
+	/**
+	 * Scans inward from the top of the image, looking for a lot of black pixels.  Just how many 
+	 * is a lot is determined by the threshold provided
+	 * @param image
+	 * @param threshold between 0 and 1.0, the ratio that will be the minimum to be considered a
+	 * border.  For instance, if you want to find a column that is 80% black pixels, pass in 0.8.
+	 * @return the y coordinate that has more than the threshold black pixels, or -1 if no such 
+	 * colum was found.
+	 */
+	static int findTopBorder(BufferedImage image, double threshold, int belowLine) {
+		Raster raster = image.getData();
+		int minX = raster.getMinX();
+		int minY = belowLine;
+		int maxY = raster.getHeight() + minY;
+		int width = raster.getWidth() - 1;
+		boolean foundBlack = false;
+		for (int i = minY; i < maxY; i++) {
+			int[] pixels = raster.getPixels(minX, i, width, 1, new int[width]);
+			int numBlack = countBlackPixels(pixels);
+			if (((double) numBlack) / width > threshold) {
+				foundBlack = true;
+			} else if (foundBlack == true) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
+	static int findTopBorder(BufferedImage image, double threshold) {
+		return findTopBorder(image, threshold, image.getMinY());
+	}
+	
+	/**
+	 * Scans inward from the top of the image, looking for a lot of black pixels.  Just how many 
+	 * is a lot is determined by the threshold provided
+	 * @param image
+	 * @param threshold between 0 and 1.0, the ratio that will be the minimum to be considered a
+	 * border.  For instance, if you want to find a column that is 80% black pixels, pass in 0.8.
+	 * @return the y coordinate that has more than the threshold black pixels, or -1 if no such 
+	 * colum was found.
+	 */
+	static int findBottomBorder(BufferedImage image, double threshold) {
+		Raster raster = image.getData();
+		int minX = raster.getMinX();
+		int minY = raster.getMinY();
+		int maxY = raster.getHeight() + minY;
+		int width = raster.getWidth() - 1;
+		boolean foundBlack = false;
+		for (int i = maxY - 1; i >= minY; i--) {
+			int[] pixels = raster.getPixels(minX, i, width, 1, new int[width]);
+			int numBlack = countBlackPixels(pixels);
+			if (((double) numBlack) / width > threshold) {
+				foundBlack = true;
+			} else if (foundBlack == true) {
+				return i;
+			}
+		}
+		return -1;
+	}
+	
 	static int countBlackPixels(int[] pixels) {
 		int ret = 0;
 		for (int i = 0; i < pixels.length; i++) {
@@ -116,6 +177,14 @@ public class App {
 		return ret;
 	}
 	
+	static BufferedImage crop(BufferedImage orig, int topMargin, int bottomMargin, int leftMargin, int rightMargin) {
+		BufferedImage subImage = new BufferedImage(rightMargin - leftMargin, bottomMargin - topMargin, orig.getType());
+		AffineTransform tx = new AffineTransform();
+		tx.translate(-leftMargin, -topMargin);
+		BufferedImageOp op = new AffineTransformOp(tx, AffineTransformOp.TYPE_BICUBIC);
+		return op.filter(orig, subImage);
+	}
+	
 	static void processPage2(BufferedImage page) throws IOException {
 		String id = UUID.randomUUID().toString();
 		BufferedImage rotated = rotateLeft90degrees(page);
@@ -124,9 +193,17 @@ public class App {
 		ImageIO.write(img, "png", new File("/tmp/" + id + "-gray.png"));
 		int leftBorder = findLeftBorder(img, 0.6);
 		int rightBorder = findRightBorder(img, 0.6);
+		int topBorder = findTopBorder(img, 0.6);
+		int bottomBorder = findBottomBorder(img, 0.6);
+		
+//		BufferedImage subImage = crop(img, topBorder, bottomBorder, leftBorder, rightBorder);
+//		ImageIO.write(subImage, "png", new File("/tmp/" + id + "-subimage.png"));
+		
+		int nextTopBorder = findTopBorder(img, 0.6, topBorder);
 		Graphics2D graphics = rotated.createGraphics();
 		graphics.setColor(Color.blue);
 		int height = rotated.getHeight() - 1;
+		int width = rotated.getWidth() - 1;
 		
 		if (leftBorder > 0)
 			graphics.draw(new Line2D.Double(leftBorder, 0, leftBorder, height));
@@ -137,6 +214,21 @@ public class App {
 			graphics.draw(new Line2D.Double(rightBorder, 0, rightBorder, height));
 		else 
 			System.out.println("no right border found");
+		
+		if (topBorder > 0)
+			graphics.draw(new Line2D.Double(0, topBorder, width, topBorder));
+		else 
+			System.out.println("no top border found");
+		
+		if (bottomBorder > 0)
+			graphics.draw(new Line2D.Double(0, bottomBorder, width, bottomBorder));
+		else 
+			System.out.println("no bottom border found");
+		
+		if (nextTopBorder >= 0)
+			graphics.draw(new Line2D.Double(0, nextTopBorder, width, nextTopBorder));
+		else 
+			System.out.println("no nextTopBorder found");
 		
 		ImageIO.write(rotated, "png", new File("/tmp/" + id + "-lines.png"));
 	}
